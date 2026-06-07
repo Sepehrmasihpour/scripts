@@ -155,7 +155,7 @@ def update_dns_record(ns_name, ip):
 
 
 def get_domains():
-    response = requests.get("https://api.iranserver.com/domains", headers=headers)
+    response = requests.post("https://api.iranserver.com/domains", headers=headers)
     print(response.text)
 
 
