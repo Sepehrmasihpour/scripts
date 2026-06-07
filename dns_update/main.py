@@ -118,7 +118,7 @@ def update_dns_record(ns_name, ip):
         response = requests.put(
             url=url,
             headers=headers,
-            json=data,
+            data=data,
             timeout=10,
         )
 
@@ -131,13 +131,12 @@ def update_dns_record(ns_name, ip):
         if 200 <= response.status_code < 300:
             logging.info("Successfully updated %s to IP %s", ns_name, ip)
             print("URL:", url)
-            print("Method: POST")
+            print("Method: PUT")
             print("Payload:", data)
             print("Status:", response.status_code)
             print("Headers:", response.headers)
             print("Body:", response.text)
             return True
-
         logging.error(
             "Failed to update %s. Status: %s | Body: %s",
             ns_name,
