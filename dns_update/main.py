@@ -3,6 +3,8 @@
 import time
 import logging
 from pathlib import Path
+import subprocess
+import re
 
 import requests
 
@@ -10,8 +12,10 @@ import requests
 # Configuration
 # =========================
 
+BIND_ZONE_FILE = "/etc/bind/db.sepehrtech.org"
+
 access_token = ""
-public_ip = ""
+public_ip = None
 
 domain = "sepehrtech.org"
 
@@ -20,8 +24,9 @@ headers = {
     "Content-Type": "application/json",
 }
 
-url = f"https://www.iranserver.com/domains/{domain}/dns"
+url = f"https://api.iranserver.com/domain/{domain}/dns"
 what_is_my_ip_url = "https://ifconfig.ir/"
+
 
 sleep_seconds = 120
 
@@ -144,33 +149,87 @@ def update_dns_record(ns_name, ip):
         return False
 
 
+def update_bind_zone(ip):
+    """
+    Updates the A records in the bind zone file with the new public IP
+    and increments the SOA serial.
+    """
+
+    try:
+        path = Path(BIND_ZONE_FILE)
+
+        if not path.exists():
+            logging.error("Bind zone file not found: %s", BIND_ZONE_FILE)
+            return False
+
+        content = path.read_text()
+
+        # replace A records
+        content = re.sub(r"(ns1\s+IN\s+A\s+)(\S+)", r"\g<1>" + ip, content)
+
+        content = re.sub(r"(@\s+IN\s+A\s+)(\S+)", r"\g<1>" + ip, content)
+
+        content = re.sub(r"(www\s+IN\s+A\s+)(\S+)", r"\g<1>" + ip, content)
+
+        # increment serial
+        serial_match = re.search(r"(\d+)\s*;\s*Serial", content)
+        if serial_match:
+            old_serial = serial_match.group(1)
+            new_serial = str(int(old_serial) + 1)
+            content = content.replace(old_serial, new_serial, 1)
+            logging.info("SOA serial updated: %s -> %s", old_serial, new_serial)
+        else:
+            logging.warning("Could not find SOA serial to increment")
+
+        path.write_text(content)
+
+        logging.info("Bind zone file updated with new IP %s", ip)
+
+        return True
+
+    except Exception as e:
+        logging.exception("Failed to update bind zone: %s", e)
+        return False
+
+
+def restart_bind():
+    try:
+        subprocess.run(["systemctl", "restart", "bind9"], check=True)
+        logging.info("bind9 restarted successfully")
+        return True
+
+    except subprocess.CalledProcessError as e:
+        logging.error("Failed to restart bind9: %s", e)
+        return False
+
+
 # =========================
 # Main loop
 # =========================
+if __name__ == "__main__":
+    while True:
+        try:
+            current_pub_ip = get_current_public_ip()
 
-while True:
-    try:
-        current_pub_ip = get_current_public_ip()
+            if public_ip is None or current_pub_ip != public_ip:
+                logging.info(
+                    "Public IP changed. Old IP: %s | New IP: %s",
+                    public_ip,
+                    current_pub_ip,
+                )
 
-        if current_pub_ip is None:
-            logging.warning("Could not determine current public IP. Continuing.")
-            time.sleep(sleep_seconds)
-            continue
+                public_ip = current_pub_ip
 
-        if current_pub_ip != public_ip:
-            logging.info(
-                "Public IP changed. Old IP: %s | New IP: %s", public_ip, current_pub_ip
-            )
+                update_dns_record("ns1.sepehrtech.org", current_pub_ip)
+                update_dns_record("ns2.sepehrtech.org", current_pub_ip)
 
-            public_ip = current_pub_ip
+                if update_bind_zone(current_pub_ip):
+                    restart_bind()
 
-            update_dns_record("ns1.sepehrtech.org", current_pub_ip)
-            update_dns_record("ns2.sepehrtech.org", current_pub_ip)
+            else:
+                logging.info("Public IP has not changed: %s", current_pub_ip)
 
-        else:
-            logging.info("Public IP has not changed: %s", current_pub_ip)
+        except Exception as e:
+            logging.exception("Unexpected error in main loop: %s", e)
 
-    except Exception as e:
-        logging.exception("Unexpected error in main loop: %s", e)
-
-    time.sleep(sleep_seconds)
+        time.sleep(sleep_seconds)
