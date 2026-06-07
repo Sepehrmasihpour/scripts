@@ -24,7 +24,7 @@ headers = {
     "Content-Type": "application/json",
 }
 
-url = f"https://api.iranserver.com/domain/{domain}/dns"
+url = f"https://api.iranserver.com/domain/{domain}/child"
 what_is_my_ip_url = "https://ifconfig.ir/"
 
 
@@ -233,3 +233,6 @@ if __name__ == "__main__":
             logging.exception("Unexpected error in main loop: %s", e)
 
         time.sleep(sleep_seconds)
+
+
+# this is a comment woooow!!!!!!
