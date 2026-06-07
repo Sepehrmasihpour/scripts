@@ -130,6 +130,12 @@ def update_dns_record(ns_name, ip):
 
         if 200 <= response.status_code < 300:
             logging.info("Successfully updated %s to IP %s", ns_name, ip)
+            print("URL:", url)
+            print("Method: POST")
+            print("Payload:", data)
+            print("Status:", response.status_code)
+            print("Headers:", response.headers)
+            print("Body:", response.text)
             return True
 
         logging.error(
@@ -149,58 +155,58 @@ def update_dns_record(ns_name, ip):
         return False
 
 
-def update_bind_zone(ip):
-    """
-    Updates the A records in the bind zone file with the new public IP
-    and increments the SOA serial.
-    """
+# def update_bind_zone(ip):
+#     """
+#     Updates the A records in the bind zone file with the new public IP
+#     and increments the SOA serial.
+#     """
 
-    try:
-        path = Path(BIND_ZONE_FILE)
+#     try:
+#         path = Path(BIND_ZONE_FILE)
 
-        if not path.exists():
-            logging.error("Bind zone file not found: %s", BIND_ZONE_FILE)
-            return False
+#         if not path.exists():
+#             logging.error("Bind zone file not found: %s", BIND_ZONE_FILE)
+#             return False
 
-        content = path.read_text()
+#         content = path.read_text()
 
-        # replace A records
-        content = re.sub(r"(ns1\s+IN\s+A\s+)(\S+)", r"\g<1>" + ip, content)
+#         # replace A records
+#         content = re.sub(r"(ns1\s+IN\s+A\s+)(\S+)", r"\g<1>" + ip, content)
 
-        content = re.sub(r"(@\s+IN\s+A\s+)(\S+)", r"\g<1>" + ip, content)
+#         content = re.sub(r"(@\s+IN\s+A\s+)(\S+)", r"\g<1>" + ip, content)
 
-        content = re.sub(r"(www\s+IN\s+A\s+)(\S+)", r"\g<1>" + ip, content)
+#         content = re.sub(r"(www\s+IN\s+A\s+)(\S+)", r"\g<1>" + ip, content)
 
-        # increment serial
-        serial_match = re.search(r"(\d+)\s*;\s*Serial", content)
-        if serial_match:
-            old_serial = serial_match.group(1)
-            new_serial = str(int(old_serial) + 1)
-            content = content.replace(old_serial, new_serial, 1)
-            logging.info("SOA serial updated: %s -> %s", old_serial, new_serial)
-        else:
-            logging.warning("Could not find SOA serial to increment")
+#         # increment serial
+#         serial_match = re.search(r"(\d+)\s*;\s*Serial", content)
+#         if serial_match:
+#             old_serial = serial_match.group(1)
+#             new_serial = str(int(old_serial) + 1)
+#             content = content.replace(old_serial, new_serial, 1)
+#             logging.info("SOA serial updated: %s -> %s", old_serial, new_serial)
+#         else:
+#             logging.warning("Could not find SOA serial to increment")
 
-        path.write_text(content)
+#         path.write_text(content)
 
-        logging.info("Bind zone file updated with new IP %s", ip)
+#         logging.info("Bind zone file updated with new IP %s", ip)
 
-        return True
+#         return True
 
-    except Exception as e:
-        logging.exception("Failed to update bind zone: %s", e)
-        return False
+#     except Exception as e:
+#         logging.exception("Failed to update bind zone: %s", e)
+#         return False
 
 
-def restart_bind():
-    try:
-        subprocess.run(["systemctl", "restart", "bind9"], check=True)
-        logging.info("bind9 restarted successfully")
-        return True
+# def restart_bind():
+#     try:
+#         subprocess.run(["systemctl", "restart", "bind9"], check=True)
+#         logging.info("bind9 restarted successfully")
+#         return True
 
-    except subprocess.CalledProcessError as e:
-        logging.error("Failed to restart bind9: %s", e)
-        return False
+#     except subprocess.CalledProcessError as e:
+#         logging.error("Failed to restart bind9: %s", e)
+#         return False
 
 
 # =========================
@@ -223,8 +229,8 @@ if __name__ == "__main__":
                 update_dns_record("ns1.sepehrtech.org", current_pub_ip)
                 update_dns_record("ns2.sepehrtech.org", current_pub_ip)
 
-                if update_bind_zone(current_pub_ip):
-                    restart_bind()
+                # if update_bind_zone(current_pub_ip):
+                #     restart_bind()
 
             else:
                 logging.info("Public IP has not changed: %s", current_pub_ip)
