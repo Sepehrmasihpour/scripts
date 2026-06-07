@@ -154,6 +154,11 @@ def update_dns_record(ns_name, ip):
         return False
 
 
+def get_domains():
+    response = requests.get("https://api.iranserver.com/domains", headers=headers)
+    print(response.text)
+
+
 # def update_bind_zone(ip):
 #     """
 #     Updates the A records in the bind zone file with the new public IP
@@ -227,6 +232,7 @@ if __name__ == "__main__":
 
                 update_dns_record("ns1.sepehrtech.org", current_pub_ip)
                 update_dns_record("ns2.sepehrtech.org", current_pub_ip)
+                get_domains()
 
                 # if update_bind_zone(current_pub_ip):
                 #     restart_bind()
