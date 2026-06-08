@@ -232,7 +232,7 @@ if __name__ == "__main__":
                 )
 
                 public_ip = current_pub_ip
-                get_cloudflare_zone_id()
+                get_cloudflare_zone_id("sepehrtech.org")
 
                 # update_dns_record("ns1.sepehrtech.org", current_pub_ip)
                 # update_dns_record("ns2.sepehrtech.org", current_pub_ip)
