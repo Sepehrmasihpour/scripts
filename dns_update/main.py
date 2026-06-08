@@ -102,10 +102,6 @@ def get_current_public_ip():
         return None
 
 
-import logging
-import requests
-
-
 def get_cloudflare_zone_id(name):
     try:
         endpoint = f"{url}/zones"
@@ -236,7 +232,7 @@ if __name__ == "__main__":
                 )
 
                 public_ip = current_pub_ip
-                get_cloudflare_zones()
+                get_cloudflare_zone_id()
 
                 # update_dns_record("ns1.sepehrtech.org", current_pub_ip)
                 # update_dns_record("ns2.sepehrtech.org", current_pub_ip)
