@@ -24,7 +24,7 @@ headers = {
     "Content-Type": "application/json",
 }
 
-url = f"https://api.iranserver.com/domain/{domain}/child"
+url = " https://api.cloudflare.com/client/v4"
 what_is_my_ip_url = "https://ifconfig.ir/"
 
 
@@ -102,7 +102,65 @@ def get_current_public_ip():
         return None
 
 
-def update_dns_record(ns_name, ip):
+import logging
+import requests
+
+
+def get_cloudflare_zones():
+    try:
+        endpoint = f"{url}/zones"
+
+        logging.info("Requesting Cloudflare zones")
+
+        response = requests.get(endpoint, headers=headers, timeout=10)
+
+        if response.status_code != 200:
+            logging.error(
+                "Cloudflare API returned non-200 status: %s | body=%s",
+                response.status_code,
+                response.text,
+            )
+            print("Cloudflare request failed:", response.status_code)
+            return False
+
+        try:
+            data = response.json()
+        except ValueError:
+            logging.error(
+                "Failed to decode JSON from Cloudflare response: %s", response.text
+            )
+            print("Invalid JSON response from Cloudflare")
+            return False
+
+        if not data.get("success"):
+            logging.error(
+                "Cloudflare API reported failure. errors=%s messages=%s",
+                data.get("errors"),
+                data.get("messages"),
+            )
+            print("Cloudflare API returned failure:", data.get("errors"))
+            return False
+
+        zones = data.get("result", [])
+
+        logging.info("Successfully fetched %s zones", len(zones))
+
+        print(zones)  # keep for testing
+
+        return zones
+
+    except requests.exceptions.RequestException as e:
+        logging.exception("Network error while contacting Cloudflare API: %s", e)
+        return False
+
+    except Exception as e:
+        logging.exception(
+            "Unexpected error while getting Cloudflare zones details: %s", e
+        )
+        return False
+
+
+def update_dns_record(ip):
     """
     Updates a DNS nameserver record.
     Returns True if the request succeeded with a 2xx status.
@@ -110,8 +168,11 @@ def update_dns_record(ns_name, ip):
     """
 
     data = {
-        "ns": ns_name,
-        "ip": ip,
+        "type": "A",
+        "name": "sepehrtech.org",
+        "content": ip,
+        "ttl": 1,
+        "proxied": False,
     }
 
     try:
@@ -124,12 +185,11 @@ def update_dns_record(ns_name, ip):
 
         logging.info(
             "DNS update request for %s returned status %s",
-            ns_name,
             response.status_code,
         )
 
         if 200 <= response.status_code < 300:
-            logging.info("Successfully updated %s to IP %s", ns_name, ip)
+            logging.info("Successfully updated %s to IP %s", ip)
             print("URL:", url)
             print("Method: PUT")
             print("Payload:", data)
@@ -139,78 +199,23 @@ def update_dns_record(ns_name, ip):
             return True
         logging.error(
             "Failed to update %s. Status: %s | Body: %s",
-            ns_name,
             response.status_code,
             response.text,
         )
         return False
 
     except requests.exceptions.RequestException as e:
-        logging.error("Network error while updating %s: %s", ns_name, e)
+        logging.error("Network error while updating %s: %s", e)
         return False
 
     except Exception as e:
-        logging.exception("Unexpected error while updating %s: %s", ns_name, e)
+        logging.exception("Unexpected error while updating %s: %s", e)
         return False
 
 
 def get_domains():
     response = requests.post("https://api.iranserver.com/domains", headers=headers)
     print(response.text)
-
-
-# def update_bind_zone(ip):
-#     """
-#     Updates the A records in the bind zone file with the new public IP
-#     and increments the SOA serial.
-#     """
-
-#     try:
-#         path = Path(BIND_ZONE_FILE)
-
-#         if not path.exists():
-#             logging.error("Bind zone file not found: %s", BIND_ZONE_FILE)
-#             return False
-
-#         content = path.read_text()
-
-#         # replace A records
-#         content = re.sub(r"(ns1\s+IN\s+A\s+)(\S+)", r"\g<1>" + ip, content)
-
-#         content = re.sub(r"(@\s+IN\s+A\s+)(\S+)", r"\g<1>" + ip, content)
-
-#         content = re.sub(r"(www\s+IN\s+A\s+)(\S+)", r"\g<1>" + ip, content)
-
-#         # increment serial
-#         serial_match = re.search(r"(\d+)\s*;\s*Serial", content)
-#         if serial_match:
-#             old_serial = serial_match.group(1)
-#             new_serial = str(int(old_serial) + 1)
-#             content = content.replace(old_serial, new_serial, 1)
-#             logging.info("SOA serial updated: %s -> %s", old_serial, new_serial)
-#         else:
-#             logging.warning("Could not find SOA serial to increment")
-
-#         path.write_text(content)
-
-#         logging.info("Bind zone file updated with new IP %s", ip)
-
-#         return True
-
-#     except Exception as e:
-#         logging.exception("Failed to update bind zone: %s", e)
-#         return False
-
-
-# def restart_bind():
-#     try:
-#         subprocess.run(["systemctl", "restart", "bind9"], check=True)
-#         logging.info("bind9 restarted successfully")
-#         return True
-
-#     except subprocess.CalledProcessError as e:
-#         logging.error("Failed to restart bind9: %s", e)
-#         return False
 
 
 # =========================
@@ -229,13 +234,10 @@ if __name__ == "__main__":
                 )
 
                 public_ip = current_pub_ip
+                get_cloudflare_zones()
 
-                update_dns_record("ns1.sepehrtech.org", current_pub_ip)
-                update_dns_record("ns2.sepehrtech.org", current_pub_ip)
-                get_domains()
-
-                # if update_bind_zone(current_pub_ip):
-                #     restart_bind()
+                # update_dns_record("ns1.sepehrtech.org", current_pub_ip)
+                # update_dns_record("ns2.sepehrtech.org", current_pub_ip)
 
             else:
                 logging.info("Public IP has not changed: %s", current_pub_ip)
