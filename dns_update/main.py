@@ -154,7 +154,7 @@ def update_dns_record(zone_id, record_id, ip):
             logging.error(
                 "Cloudflare API error getting records: %s", data.get("errors")
             )
-            return
+            return False
 
         resutl = data.get("result")
         logging.info("Successfully updated %s to IP %s. result:%s", DOMAIN, ip, resutl)
