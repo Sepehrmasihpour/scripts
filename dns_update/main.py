@@ -62,6 +62,14 @@ def get_cloudflare_zone_id(domain_name):
         response = requests.get(endpoint, headers=HEADERS, timeout=10)
         data = response.json()
 
+        if response.status_code != 200:
+            logging.error(
+                "Failed to get DNS zones. Status: %s | Response: %s",
+                response.status_code,
+                response.text,
+            )
+            return False
+
         if not data.get("success"):
             logging.error("Cloudflare API error: %s", data.get("errors"))
             return None
@@ -86,6 +94,14 @@ def get_cloudflare_record_id(zone_id, record_name):
         endpoint = f"{API_BASE_URL}/zones/{zone_id}/dns_records"
         response = requests.get(endpoint, headers=HEADERS, timeout=10)
         data = response.json()
+
+        if response.status_code != 200:
+            logging.error(
+                "Failed to update get DNS record ID. Status: %s | Response: %s",
+                response.status_code,
+                response.text,
+            )
+            return False
 
         if not data.get("success"):
             logging.error(
@@ -124,17 +140,25 @@ def update_dns_record(zone_id, record_id, ip):
     try:
         # Note: Use 'json=' instead of 'data=' to send JSON format
         response = requests.patch(endpoint, headers=HEADERS, json=data, timeout=10)
+        data = response.json()
 
-        if response.status_code == 200:
-            logging.info("Successfully updated %s to IP %s", DOMAIN, ip)
-            return True
-        else:
+        if response.status_code != 200:
             logging.error(
                 "Failed to update DNS. Status: %s | Response: %s",
                 response.status_code,
                 response.text,
             )
             return False
+
+        if not data.get("success"):
+            logging.error(
+                "Cloudflare API error getting records: %s", data.get("errors")
+            )
+            return
+
+        resutl = data.get("result")
+        logging.info("Successfully updated %s to IP %s. result:%s", DOMAIN, ip, resutl)
+        return True
 
     except Exception as e:
         logging.exception("Error while updating DNS: %s", e)
