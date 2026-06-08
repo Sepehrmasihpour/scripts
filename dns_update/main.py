@@ -106,7 +106,7 @@ import logging
 import requests
 
 
-def get_cloudflare_zones():
+def get_cloudflare_zone_id(name):
     try:
         endpoint = f"{url}/zones"
 
@@ -142,10 +142,12 @@ def get_cloudflare_zones():
             return False
 
         zones = data.get("result", [])
+        target_zone = next((item for item in data if item["name"] == name), None)
+        print(target_zone)
+        zone_id = target_zone["id"]
+        print(zone_id)
 
         logging.info("Successfully fetched %s zones", len(zones))
-
-        print(zones)  # keep for testing
 
         return zones
 
