@@ -131,7 +131,7 @@ def update_dns_record(zone_id, record_id, ip):
     endpoint = f"{API_BASE_URL}/zones/{zone_id}/dns_records/{record_id}"
     data = {
         "type": "A",
-        "name": DOMAIN,
+        "name": "ssh",
         "content": ip,
         "ttl": 1,
         "proxied": False,
