@@ -131,7 +131,7 @@ def update_dns_record(zone_id, record_id, ip):
     endpoint = f"{API_BASE_URL}/zones/{zone_id}/dns_records/{record_id}"
     data = {
         "type": "A",
-        "name": "ssh",
+        "name": f"ssh.{DOMAIN}",
         "content": ip,
         "ttl": 1,
         "proxied": False,
@@ -188,7 +188,7 @@ if __name__ == "__main__":
                     zone_id = get_cloudflare_zone_id(DOMAIN)
 
                 if zone_id and not record_id:
-                    record_id = get_cloudflare_record_id(zone_id, DOMAIN)
+                    record_id = get_cloudflare_record_id(zone_id, f"ssh.{DOMAIN}")
 
                 if zone_id and record_id:
                     if update_dns_record(zone_id, record_id, current_pub_ip):
